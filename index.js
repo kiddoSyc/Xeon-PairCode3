@@ -9,13 +9,18 @@ const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
+// Serve index.html for root route
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/public/index.html');
+});
+
 // Ensure sessions folder exists
 if (!fs.existsSync('./sessions')) {
     fs.mkdirSync('./sessions');
     console.log(chalk.green('Created sessions folder.'));
 }
 
-// Enable mock mode for testing (set to true to bypass Baileys)
+// Enable mock mode for testing
 const MOCK_MODE = process.env.MOCK_MODE === 'true' || false;
 
 async function generatePairCode(phoneNumber) {
@@ -23,7 +28,7 @@ async function generatePairCode(phoneNumber) {
         console.log(chalk.blue(`Starting pair code generation for ${phoneNumber}`));
         if (MOCK_MODE) {
             console.log(chalk.yellow('Using mock mode...'));
-            await delay(3000); // Simulate delay
+            await delay(3000);
             const mockCode = `MOCK-${phoneNumber.slice(1)}-${Date.now().toString().slice(-6)}`;
             console.log(chalk.green(`Mock pair code generated: ${mockCode}`));
             return { code: mockCode };
@@ -34,49 +39,48 @@ async function generatePairCode(phoneNumber) {
         const { state, saveCreds } = await useMultiFileAuthState('./sessions');
 
         const XeonBotInc = makeWASocket({
-            logger: pino({ level: 'silent' }),
+            logger: pino({ level: 'debug' }), // Enable debug logs
             browser: Browsers.windows('Firefox'),
-            auth: state,
+            auth: { creds: state.creds, keys: state.keys },
             markOnlineOnConnect: true,
-            version
+            connectTimeoutMs: 60000, // 60s timeout
+            keepAliveIntervalMs: 30000, // Keep alive
         });
 
-        // Save credentials on update
-        XeonBotInc.ev.on('creds.update', saveCreds);
-
-        // Keep connection alive
-        XeonBotInc.ev.on('connection.update', (update) => {
-            const { connection, lastDisconnect } = update;
-            if (connection === 'open') {
-                console.log(chalk.green('✅ WhatsApp connected successfully!'));
-            } else if (connection === 'close') {
-                console.log(chalk.red('❌ Connection closed. Trying to reconnect...'));
-                generatePairCode(phoneNumber);
-            }
-        });
+        let attempts = 0;
+        const maxAttempts = 3;
 
         return new Promise((resolve) => {
-            if (!XeonBotInc.authState?.creds?.registered) {
+            if (!XeonBotInc.authState.creds.registered) {
                 phoneNumber = phoneNumber.replace(/[^0-9]/g, '');
                 console.log(chalk.yellow(`Processing phone number: ${phoneNumber}`));
                 if (!Object.keys(PHONENUMBER_MCC).some(v => phoneNumber.startsWith(v))) {
                     console.log(chalk.red('Invalid country code'));
-                    resolve({ error: "Start with country code, e.g., +916909137213" });
+                    resolve({ error: "Start with country code, e.g., +2348065593209" });
                     return;
                 }
 
-                setTimeout(async () => {
+                XeonBotInc.ev.on('creds.update', saveCreds);
+                const attemptPairing = async () => {
+                    attempts++;
                     try {
-                        console.log(chalk.yellow('Requesting pairing code from Baileys...'));
+                        console.log(chalk.yellow(`Requesting pairing code from Baileys (Attempt ${attempts}/${maxAttempts})...`));
                         let code = await XeonBotInc.requestPairingCode(phoneNumber);
                         code = code?.match(/.{1,4}/g)?.join("-") || code;
                         console.log(chalk.green(`Pair code generated: ${code}`));
                         resolve({ code });
                     } catch (pairingError) {
-                        console.error(chalk.red('Pairing request failed:', pairingError));
-                        resolve({ error: `Pairing failed: ${pairingError.message}` });
+                        console.error(chalk.red(`Pairing request failed (Attempt ${attempts}):`, pairingError.message));
+                        if (attempts < maxAttempts && pairingError.message.includes('Connection Closed')) {
+                            console.log(chalk.yellow('Retrying due to connection issue...'));
+                            await delay(5000); // Wait before retry
+                            attemptPairing();
+                        } else {
+                            resolve({ error: `Pairing failed after ${attempts} attempts: ${pairingError.message}` });
+                        }
                     }
-                }, 3000);
+                };
+                attemptPairing();
             } else {
                 console.log(chalk.yellow('Already registered, skipping pairing.'));
                 resolve({ error: "Already registered" });
