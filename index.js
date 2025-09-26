@@ -39,16 +39,17 @@ async function generatePairCode(phoneNumber) {
         const { state, saveCreds } = await useMultiFileAuthState('./sessions');
 
         const XeonBotInc = makeWASocket({
-            logger: pino({ level: 'debug' }), // Enable debug logs
+            logger: pino({ level: 'debug' }),
             browser: Browsers.windows('Firefox'),
             auth: { creds: state.creds, keys: state.keys },
             markOnlineOnConnect: true,
-            connectTimeoutMs: 60000, // 60s timeout
-            keepAliveIntervalMs: 30000, // Keep alive
+            connectTimeoutMs: 120000, // 2 minutes
+            keepAliveIntervalMs: 60000, // 1 minute
+            maxRetries: 5, // Increase retry attempts
         });
 
         let attempts = 0;
-        const maxAttempts = 3;
+        const maxAttempts = 5;
 
         return new Promise((resolve) => {
             if (!XeonBotInc.authState.creds.registered) {
@@ -73,7 +74,7 @@ async function generatePairCode(phoneNumber) {
                         console.error(chalk.red(`Pairing request failed (Attempt ${attempts}):`, pairingError.message));
                         if (attempts < maxAttempts && pairingError.message.includes('Connection Closed')) {
                             console.log(chalk.yellow('Retrying due to connection issue...'));
-                            await delay(5000); // Wait before retry
+                            await delay(10000); // 10s delay between retries
                             attemptPairing();
                         } else {
                             resolve({ error: `Pairing failed after ${attempts} attempts: ${pairingError.message}` });
