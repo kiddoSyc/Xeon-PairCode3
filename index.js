@@ -36,16 +36,27 @@ async function generatePairCode(phoneNumber) {
         const XeonBotInc = makeWASocket({
             logger: pino({ level: 'silent' }),
             browser: Browsers.windows('Firefox'),
-            auth: {
-                creds: state.creds,
-                /** Removed makeCacheableSignalKeyStore due to undefined error */
-                keys: state.keys, // Use default key management
-            },
+            auth: state,
             markOnlineOnConnect: true,
+            version
+        });
+
+        // Save credentials on update
+        XeonBotInc.ev.on('creds.update', saveCreds);
+
+        // Keep connection alive
+        XeonBotInc.ev.on('connection.update', (update) => {
+            const { connection, lastDisconnect } = update;
+            if (connection === 'open') {
+                console.log(chalk.green('✅ WhatsApp connected successfully!'));
+            } else if (connection === 'close') {
+                console.log(chalk.red('❌ Connection closed. Trying to reconnect...'));
+                generatePairCode(phoneNumber);
+            }
         });
 
         return new Promise((resolve) => {
-            if (!XeonBotInc.authState.creds.registered) {
+            if (!XeonBotInc.authState?.creds?.registered) {
                 phoneNumber = phoneNumber.replace(/[^0-9]/g, '');
                 console.log(chalk.yellow(`Processing phone number: ${phoneNumber}`));
                 if (!Object.keys(PHONENUMBER_MCC).some(v => phoneNumber.startsWith(v))) {
@@ -54,7 +65,6 @@ async function generatePairCode(phoneNumber) {
                     return;
                 }
 
-                XeonBotInc.ev.on('creds.update', saveCreds);
                 setTimeout(async () => {
                     try {
                         console.log(chalk.yellow('Requesting pairing code from Baileys...'));
