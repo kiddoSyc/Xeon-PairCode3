@@ -1,127 +1,112 @@
-//copy code? pls put my github name as credit
-//🖕 to those who copy without credit
-const makeWASocket = require("@whiskeysockets/baileys").default
-const qrcode = require("qrcode-terminal")
-const fs = require('fs')
-const pino = require('pino')
-const { delay, useMultiFileAuthState, BufferJSON, fetchLatestBaileysVersion, PHONENUMBER_MCC, DisconnectReason, makeInMemoryStore, jidNormalizedUser, makeCacheableSignalKeyStore } = require("@whiskeysockets/baileys")
-const Pino = require("pino")
-const NodeCache = require("node-cache")
-const chalk = require("chalk")
-const readline = require("readline")
-const { parsePhoneNumber } = require("libphonenumber-js")
+const express = require('express');
+const qrcode = require("qrcode-terminal");
+const fs = require('fs');
+const pino = require('pino');
+const { default: makeWASocket, Browsers, delay, useMultiFileAuthState, fetchLatestBaileysVersion, PHONENUMBER_MCC } = require("@whiskeysockets/baileys");
+const chalk = require("chalk");
 
+const app = express();
+app.use(express.json());
+app.use(express.static('public'));
 
-let phoneNumber = "916909137213"
-
-const pairingCode = !!phoneNumber || process.argv.includes("--pairing-code")
-const useMobile = process.argv.includes("--mobile")
-
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
-const question = (text) => new Promise((resolve) => rl.question(text, resolve))
-
-
-  async function qr() {
-//------------------------------------------------------
-let { version, isLatest } = await fetchLatestBaileysVersion()
-const {  state, saveCreds } =await useMultiFileAuthState(`./sessions`)
-    const msgRetryCounterCache = new NodeCache() // for retry message, "waiting message"
-    const XeonBotInc = makeWASocket({
-        logger: pino({ level: 'silent' }),
-        printQRInTerminal: !pairingCode, // popping up QR in terminal log
-      mobile: useMobile, // mobile api (prone to bans)
-      browser: ['Chrome (Linux)', '', ''], // for this issues https://github.com/WhiskeySockets/Baileys/issues/328
-     auth: {
-         creds: state.creds,
-         keys: makeCacheableSignalKeyStore(state.keys, Pino({ level: "fatal" }).child({ level: "fatal" })),
-      },
-      browser: ['Chrome (Linux)', '', ''], // for this issues https://github.com/WhiskeySockets/Baileys/issues/328
-      markOnlineOnConnect: true, // set false for offline
-      generateHighQualityLinkPreview: true, // make high preview link
-      getMessage: async (key) => {
-         let jid = jidNormalizedUser(key.remoteJid)
-         let msg = await store.loadMessage(jid, key.id)
-
-         return msg?.message || ""
-      },
-      msgRetryCounterCache, // Resolve waiting messages
-      defaultQueryTimeoutMs: undefined, // for this issues https://github.com/WhiskeySockets/Baileys/issues/276
-   })
-
-
-    // login use pairing code
-   // source code https://github.com/WhiskeySockets/Baileys/blob/master/Example/example.ts#L61
-   if (pairingCode && !XeonBotInc.authState.creds.registered) {
-      if (useMobile) throw new Error('Cannot use pairing code with mobile api')
-
-      let phoneNumber
-      if (!!phoneNumber) {
-         phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
-
-         if (!Object.keys(PHONENUMBER_MCC).some(v => phoneNumber.startsWith(v))) {
-            console.log(chalk.bgBlack(chalk.redBright("Start with country code of your WhatsApp Number, Example : +916909137213")))
-            process.exit(0)
-         }
-      } else {
-         phoneNumber = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFor example: +916909137213 : `)))
-         phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
-
-         // Ask again when entering the wrong number
-         if (!Object.keys(PHONENUMBER_MCC).some(v => phoneNumber.startsWith(v))) {
-            console.log(chalk.bgBlack(chalk.redBright("Start with country code of your WhatsApp Number, Example : +916909137213")))
-
-            phoneNumber = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFor example: +916909137213 : `)))
-            phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
-            rl.close()
-         }
-      }
-
-      setTimeout(async () => {
-         let code = await XeonBotInc.requestPairingCode(phoneNumber)
-         code = code?.match(/.{1,4}/g)?.join("-") || code
-         console.log(chalk.black(chalk.bgGreen(`Your Pairing Code : `)), chalk.black(chalk.white(code)))
-      }, 3000)
-   }
-//------------------------------------------------------
-    XeonBotInc.ev.on("connection.update",async  (s) => {
-        const { connection, lastDisconnect } = s
-        if (connection == "open") {
-            await delay(1000 * 10)
-            await XeonBotInc.sendMessage(XeonBotInc.user.id, { text: `🪀Support/Contact Developer\n\n\n⎆Donate: https://i.ibb.co/w46VQ8D/Picsart-22-10-08-06-46-30-674.jpg\n\n⎆YouTube: https://youtube.com/@DGXeon\n\n⎆Telegram Channel: https://t.me/xeonbotinc\n\n⎆Telegram Chat: https://t.me/+AYOyJflnt-AzNGFl\n\n⎆WhatsApp Gc1: https://chat.whatsapp.com/Kjm8rnDFcpb04gQNSTbW2d\n\n⎆WhatsApp Gc2: https://chat.whatsapp.com/EEOnU0V7dl9HF1mMFO8QWa\n\n⎆WhatsApp Gc3: https://chat.whatsapp.com/Dh0lD0Ee5hN1JMFXNqtxSG\n\n⎆WhatsApp Pm: Wa.me/916909137213\n\n⎆Instagram: https://instagram.com/unicorn_xeon13\n\n⎆GitHub: https://github.com/DGXeon/\n\n⎆Blog: https://dreamguyxeonfiles.blogspot.com/2022/05/bots%20whatsapp%20mods.html?m=1\n\n\n` });
-            let sessionXeon = fs.readFileSync('./sessions/creds.json');
-            await delay(1000 * 2) 
-             const xeonses = await  XeonBotInc.sendMessage(XeonBotInc.user.id, { document: sessionXeon, mimetype: `application/json`, fileName: `creds.json` })
-             await XeonBotInc.sendMessage(XeonBotInc.user.id, { text: `⚠️Do not share this file with anybody⚠️\n
-┌─❖
-│ Ohayo 😽
-└┬❖  
-┌┤✑  Thanks for using X-PairCode
-│└────────────┈ ⳹        
-│©2020-2023 XeonBotInc 
-└─────────────────┈ ⳹\n\n ` }, {quoted: xeonses});
-              await delay(1000 * 2) 
-              process.exit(0)
-        }
-        if (
-            connection === "close" &&
-            lastDisconnect &&
-            lastDisconnect.error &&
-            lastDisconnect.error.output.statusCode != 401
-        ) {
-            qr()
-        }
-    })
-    XeonBotInc.ev.on('creds.update', saveCreds)
-    XeonBotInc.ev.on("messages.upsert",  () => { })
+// Ensure sessions folder exists
+if (!fs.existsSync('./sessions')) {
+    fs.mkdirSync('./sessions');
+    console.log(chalk.green('Created sessions folder.'));
 }
-qr()
 
-process.on('uncaughtException', function (err) {
-let e = String(err)
-if (e.includes("Socket connection timeout")) return
-if (e.includes("rate-overlimit")) return
-if (e.includes("Connection Closed")) return
-if (e.includes("Timed Out")) return
-if (e.includes("Value not found")) return
-console.log('Caught exception: ', err)
-})
+// Enable mock mode for testing (set to true to bypass Baileys)
+const MOCK_MODE = process.env.MOCK_MODE === 'true' || false;
+
+async function generatePairCode(phoneNumber) {
+    try {
+        console.log(chalk.blue(`Starting pair code generation for ${phoneNumber}`));
+        if (MOCK_MODE) {
+            console.log(chalk.yellow('Using mock mode...'));
+            await delay(3000); // Simulate delay
+            const mockCode = `MOCK-${phoneNumber.slice(1)}-${Date.now().toString().slice(-6)}`;
+            console.log(chalk.green(`Mock pair code generated: ${mockCode}`));
+            return { code: mockCode };
+        }
+
+        const { version } = await fetchLatestBaileysVersion();
+        console.log(chalk.blue(`Fetched Baileys version: ${version.join('.')}`));
+        const { state, saveCreds } = await useMultiFileAuthState('./sessions');
+
+        const XeonBotInc = makeWASocket({
+            logger: pino({ level: 'silent' }),
+            browser: Browsers.windows('Firefox'),
+            auth: {
+                creds: state.creds,
+                /** Removed makeCacheableSignalKeyStore due to undefined error */
+                keys: state.keys, // Use default key management
+            },
+            markOnlineOnConnect: true,
+        });
+
+        return new Promise((resolve) => {
+            if (!XeonBotInc.authState.creds.registered) {
+                phoneNumber = phoneNumber.replace(/[^0-9]/g, '');
+                console.log(chalk.yellow(`Processing phone number: ${phoneNumber}`));
+                if (!Object.keys(PHONENUMBER_MCC).some(v => phoneNumber.startsWith(v))) {
+                    console.log(chalk.red('Invalid country code'));
+                    resolve({ error: "Start with country code, e.g., +916909137213" });
+                    return;
+                }
+
+                XeonBotInc.ev.on('creds.update', saveCreds);
+                setTimeout(async () => {
+                    try {
+                        console.log(chalk.yellow('Requesting pairing code from Baileys...'));
+                        let code = await XeonBotInc.requestPairingCode(phoneNumber);
+                        code = code?.match(/.{1,4}/g)?.join("-") || code;
+                        console.log(chalk.green(`Pair code generated: ${code}`));
+                        resolve({ code });
+                    } catch (pairingError) {
+                        console.error(chalk.red('Pairing request failed:', pairingError));
+                        resolve({ error: `Pairing failed: ${pairingError.message}` });
+                    }
+                }, 3000);
+            } else {
+                console.log(chalk.yellow('Already registered, skipping pairing.'));
+                resolve({ error: "Already registered" });
+            }
+        });
+    } catch (error) {
+        console.error(chalk.red('Baileys setup error:', error));
+        throw error;
+    }
+}
+
+// API endpoint for generating pair code
+app.post('/generate', async (req, res) => {
+    const { phoneNumber } = req.body;
+    if (!phoneNumber) {
+        console.log(chalk.red('No phone number provided'));
+        return res.status(400).json({ error: "Phone number is required" });
+    }
+    try {
+        console.log(chalk.blue(`Generating pair code for ${phoneNumber}`));
+        const result = await generatePairCode(phoneNumber);
+        console.log(chalk.blue(`Result: ${JSON.stringify(result)}`));
+        res.json(result);
+    } catch (error) {
+        console.error(chalk.red('Error in /generate endpoint:', error));
+        res.status(500).json({ error: "Failed to generate pair code", details: error.message });
+    }
+});
+
+// Optional API endpoint to reset sessions
+app.post('/reset-sessions', (req, res) => {
+    if (fs.existsSync('./sessions')) {
+        fs.rmSync('./sessions', { recursive: true, force: true });
+    }
+    fs.mkdirSync('./sessions');
+    console.log(chalk.green('Sessions reset successfully.'));
+    res.json({ message: "Sessions reset successfully" });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(chalk.green(`Server running on port ${PORT}`));
+});

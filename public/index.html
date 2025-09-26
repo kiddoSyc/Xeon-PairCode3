@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asheyrix Pair Code Generator</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #1a001a, #2d003d);
+            overflow: hidden;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 150, 0.3);
+            text-align: center;
+            border: 1px solid rgba(0, 255, 150, 0.5);
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        h1 {
+            font-size: 32px;
+            color: #00ff96;
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px #00ff96, 0 0 20px #00ff96;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        p {
+            color: #d1c4e9;
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        .social {
+            margin: 15px 0;
+        }
+        .social img {
+            width: 35px;
+            margin: 0 8px;
+            transition: transform 0.3s ease;
+        }
+        .social img:hover {
+            transform: scale(1.2);
+            filter: drop-shadow(0 0 5px #00ff96);
+        }
+        input {
+            padding: 12px;
+            width: 250px;
+            margin: 10px 0;
+            border: 2px solid #00ff96;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            font-size: 14px;
+        }
+        input::placeholder {
+            color: #b39ddb;
+        }
+        button {
+            padding: 12px 25px;
+            margin: 5px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        #pairCodeBtn {
+            background: #00ff96;
+            color: #1a001a;
+        }
+        #qrCodeBtn {
+            background: rgba(255, 255, 255, 0.2);
+            color: #00ff96;
+            border: 1px solid #00ff96;
+        }
+        #generateBtn {
+            background: #00ff96;
+            color: #1a001a;
+        }
+        #copyBtn {
+            background: rgba(255, 255, 255, 0.2);
+            color: #00ff96;
+            border: 1px solid #00ff96;
+        }
+        button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(0, 255, 150, 0.5);
+        }
+        #result {
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #00ff96;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            min-height: 20px;
+        }
+        footer {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #b39ddb;
+        }
+        /* Responsive Design */
+        @media (max-width: 480px) {
+            .container { padding: 20px; }
+            h1 { font-size: 24px; }
+            input { width: 180px; }
+            button { padding: 10px 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Asheyrix</h1>
+        <p>Link your WhatsApp device to the future</p>
+        <div class="social">
+            <a href="https://youtube.com" target="_blank"><img src="https://via.placeholder.com/35?text=YouTube" alt="YouTube"></a>
+            <a href="https://t.me" target="_blank"><img src="https://via.placeholder.com/35?text=Telegram" alt="Telegram"></a>
+            <a href="https://whatsapp.com" target="_blank"><img src="https://via.placeholder.com/35?text=WhatsApp" alt="WhatsApp"></a>
+            <a href="https://github.com" target="_blank"><img src="https://via.placeholder.com/35?text=GitHub" alt="GitHub"></a>
+        </div>
+        <button id="pairCodeBtn">🔑 Pair Code</button>
+        <button id="qrCodeBtn">📄 QR Code</button>
+        <input type="text" id="phoneNumber" placeholder="Enter your WhatsApp number (e.g., +2348065593209)">
+        <button id="generateBtn">🔑 Generate Pair Code</button>
+        <div id="result">Your pair code will appear here</div>
+        <button id="copyBtn">📋 Copy Code</button>
+        <footer>© 2025 Asheyrix | Powered by Innovation</footer>
+    </div>
+    <script>
+        const generateBtn = document.getElementById('generateBtn');
+        const phoneNumberInput = document.getElementById('phoneNumber');
+        const resultDiv = document.getElementById('result');
+        const copyBtn = document.getElementById('copyBtn');
+
+        generateBtn.addEventListener('click', () => {
+            const phoneNumber = phoneNumberInput.value.trim();
+            if (phoneNumber) {
+                fetch('/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phoneNumber })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        resultDiv.textContent = data.error;
+                    } else {
+                        resultDiv.textContent = data.code;
+                    }
+                })
+                .catch(error => resultDiv.textContent = 'Error generating code');
+            } else {
+                resultDiv.textContent = 'Please enter a valid number';
+            }
+        });
+
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(resultDiv.textContent).then(() => {
+                alert('Code copied to clipboard!');
+            });
+        });
+    </script>
+</body>
+</html>

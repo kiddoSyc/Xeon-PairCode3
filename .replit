@@ -1,0 +1,13 @@
+run = ["bash", "run.sh"]
+
+entrypoint = "main.sh"
+
+[nix]
+channel = "stable-22_11"
+
+[agent]
+expertMode = true
+
+[[ports]]
+localPort = 3000
+externalPort = 80
